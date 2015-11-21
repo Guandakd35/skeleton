@@ -46,18 +46,20 @@ static void *thread_do_work(void *pool);
  */
 pool_t *pool_create(int queue_size, int num_threads)
 {
+  int i = 0;
   pool_t *pl = (pool_t*)malloc(sizeof(pool_t));
   pthread_mutex_init(&(pl->lock), NULL);
   pthread_cond_init (&(pl->not_empty), NULL);
   pthread_cond_init (&(pl->not_full), NULL);
-  pl->thread_count = 0;
+  pl->close = 0;
+  pl->thread_count = MAX_THREADS;
   pl->queue_front = 0;
   pl->queue_rear = 0;
   pl->queue_used = 0;
   pl->task_queue_size_limit = 20;
   pl->threads = (pthread_t *)malloc(sizeof(pthread_t) * MAX_THREADS);
   pl->queue = (pool_task_t *)malloc(sizeof(pool_task_t) * pl->task_queue_size_limit);
-  for(int i = 0; i < MAX_THREADS; i++)
+  for(i = 0; i < MAX_THREADS; i++)
   {
     pthread_create(&(pl->threads[i]),NULL, thread_do_work, (void*)pl);
   }
@@ -81,7 +83,7 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument)
   (pool->queue[pool->queue_rear]).argument = argument;
   pool->queue_rear = (pool->queue_rear+1) % pool->task_queue_size_limit;
   pool->queue_used++;
-  pthread_cond_signal(&(pool->not_empty));
+  pthread_cond_broadcast(&(pool->not_empty));
   pthread_mutex_unlock(&(pool->lock));     
   return err;
 }
@@ -94,8 +96,21 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument)
  */
 int pool_destroy(pool_t *pool)
 {
+    int i = 0;
     int err = 0;
-    
+    int rc;
+    void *status;
+    pool->close = 1;
+    for(i = 0; i< pool->thread_count; i++)
+    {
+        rc=pthread_join(pool->threads[i],&status);
+    }
+    free(pool->threads);
+    free(pool->queue);
+    pthread_mutex_destroy(&pool->lock);
+    pthread_cond_destroy(&pool->not_empty);
+    pthread_cond_destroy(&pool->not_full);
+    free(pool);
     return err;
 }
 
