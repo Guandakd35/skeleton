@@ -97,7 +97,7 @@ int main(int argc,char *argv[])
     while(1)
     {
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
-
+        printf("the file D this time is %d\n",connfd);
         /*********************************************************************
             You should not need to modify any of the code above this comment.
             However, you will need to add lines to declare and initialize your 

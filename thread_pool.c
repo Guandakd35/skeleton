@@ -30,10 +30,11 @@ struct pool_t {
   pthread_t *threads;
   pool_task_t *queue;
   int thread_count;
-  int used;
+  int queue_used;
   int task_queue_size_limit;
   int queue_front;
   int queue_rear;
+  int close;
 };
 
 static void *thread_do_work(void *pool);
@@ -58,7 +59,7 @@ pool_t *pool_create(int queue_size, int num_threads)
   pl->queue = (pool_task_t *)malloc(sizeof(pool_task_t) * pl->task_queue_size_limit);
   for(int i = 0; i < MAX_THREADS; i++)
   {
-    pthread_create(&(threads[i]),NULL, thread_do_work, (void*)pl);
+    pthread_create(&(pl->threads[i]),NULL, thread_do_work, (void*)pl);
   }
   return pl;
 }
@@ -94,7 +95,7 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument)
 int pool_destroy(pool_t *pool)
 {
     int err = 0;
- 
+    
     return err;
 }
 
