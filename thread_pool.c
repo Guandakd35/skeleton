@@ -105,13 +105,40 @@ int pool_destroy(pool_t *pool)
  * Work loop for threads. Should be passed into the pthread_create() method.
  *
  */
+/*
+ * Work loop for threads. Should be passed into the pthread_create() method.
+ *
+ */
 static void *thread_do_work(void *pool)
 { 
-
+	//these threads will constantly be running
     while(1) {
-        
-    }
+
+		pthread_mutex_lock(&(pool->lock)); //must lock this because we are working with the worker queue
+		if((pool->queue_used) == 0) //if worker queue is empty, put thread to sleep until new tasks are added to the worker queue
+		{
+			pthread_cond_wait(&(pool->not_empty),&(pool->lock));
+		}
+		//if worker queue is not empty than complete the first task in the queue
+		
+		//void * dowork(void* fd)
+		 // (pool->queue[pool->queue_rear]).function = function; 
+		//(pool->queue[pool->queue_rear]).argument = argument; 
+
+		pool_task_t temp = pool->queue[pool->queue_front]; //I don't know how to do dereference of the void function pointers specifically so I'm going to do this and use a temp
+
+		pool->queue_used--; //total amount of jobs completed is minus one
+		pool->queue_front++; //upon completing the task we want to increment the queue by one
+		pthread_cond_signal(&(pool->not_full)); ///signal that we are available to add another job
+		pthread_mutex_unlock(&(pool->lock));    //release the lock before executing the function
+
+		//execute the actual function simultaneously with any other threads
+		(temp.function)(temp.argument);
+	}
+
+    
 
     pthread_exit(NULL);
     return(NULL);
+
 }
