@@ -30,6 +30,7 @@ struct pool_t {
   pthread_t *threads;
   pool_task_t *queue;
   int thread_count;
+  int used;
   int task_queue_size_limit;
   int queue_front;
   int queue_rear;
@@ -51,6 +52,7 @@ pool_t *pool_create(int queue_size, int num_threads)
   pl->thread_count = 0;
   pl->queue_front = 0;
   pl->queue_rear = 0;
+  pl->queue_used = 0;
   pl->task_queue_size_limit = 20;
   pl->threads = (pthread_t *)malloc(sizeof(pthread_t) * MAX_THREADS);
   pl->queue = (pool_task_t *)malloc(sizeof(pool_task_t) * pl->task_queue_size_limit);
@@ -70,7 +72,16 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument)
 {
   int err = 0;
   pthread_mutex_lock(&(pool->lock));
-  while(pool->)      
+  while(pool->queue_used == pool->task_queue_size_limit)
+  {
+    pthread_cond_wait(&(pool->not_full),&(pool->lock));
+  }
+  (pool->queue[pool->queue_rear]).function = function;
+  (pool->queue[pool->queue_rear]).argument = argument;
+  pool->queue_rear = (pool->queue_rear+1) % pool->task_queue_size_limit;
+  pool->queue_used++;
+  pthread_cond_signal(&(pool->not_empty));
+  pthread_mutex_unlock(&(pool->lock));     
   return err;
 }
 
