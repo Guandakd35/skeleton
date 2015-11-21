@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
-
+#include <stdio.h>
 #include "thread_pool.h"
 
 /**
@@ -37,7 +37,7 @@ struct pool_t {
   int close;
 };
 
-static void *thread_do_work(void *pool);
+static void *thread_do_work(void *poo);
 
 
 /*
@@ -56,7 +56,7 @@ pool_t *pool_create(int queue_size, int num_threads)
   pl->queue_front = 0;
   pl->queue_rear = 0;
   pl->queue_used = 0;
-  pl->task_queue_size_limit = 20;
+  pl->task_queue_size_limit = queue_size;
   pl->threads = (pthread_t *)malloc(sizeof(pthread_t) * MAX_THREADS);
   pl->queue = (pool_task_t *)malloc(sizeof(pool_task_t) * pl->task_queue_size_limit);
   for(i = 0; i < MAX_THREADS; i++)
@@ -83,6 +83,7 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument)
   (pool->queue[pool->queue_rear]).argument = argument;
   pool->queue_rear = (pool->queue_rear+1) % pool->task_queue_size_limit;
   pool->queue_used++;
+  printf("I am the %d th in the queue\n",pool->queue_rear);
   pthread_cond_broadcast(&(pool->not_empty));
   pthread_mutex_unlock(&(pool->lock));     
   return err;
@@ -120,30 +121,27 @@ int pool_destroy(pool_t *pool)
  * Work loop for threads. Should be passed into the pthread_create() method.
  *
  */
-/*
- * Work loop for threads. Should be passed into the pthread_create() method.
- *
- */
-static void *thread_do_work(void *pool)
+
+static void *thread_do_work(void *poo)
 { 
 	//these threads will constantly be running
     while(1) {
-
+      printf("I am a thread\n");
+      pool_t *pool = (pool_t*)poo;
+      if(pool->close == 1)
+      {
+        pthread_exit(NULL);
+      }
 		pthread_mutex_lock(&(pool->lock)); //must lock this because we are working with the worker queue
-		if((pool->queue_used) == 0) //if worker queue is empty, put thread to sleep until new tasks are added to the worker queue
+		while((pool->queue_used) == 0) //if worker queue is empty, put thread to sleep until new tasks are added to the worker queue
 		{
 			pthread_cond_wait(&(pool->not_empty),&(pool->lock));
 		}
-		//if worker queue is not empty than complete the first task in the queue
-		
-		//void * dowork(void* fd)
-		 // (pool->queue[pool->queue_rear]).function = function; 
-		//(pool->queue[pool->queue_rear]).argument = argument; 
-
+    printf("Yeah, my turn\n");
 		pool_task_t temp = pool->queue[pool->queue_front]; //I don't know how to do dereference of the void function pointers specifically so I'm going to do this and use a temp
 
 		pool->queue_used--; //total amount of jobs completed is minus one
-		pool->queue_front++; //upon completing the task we want to increment the queue by one
+		pool->queue_front = (pool->queue_front + 1) % pool->task_queue_size_limit; //upon completing the task we want to increment the queue by one
 		pthread_cond_signal(&(pool->not_full)); ///signal that we are available to add another job
 		pthread_mutex_unlock(&(pool->lock));    //release the lock before executing the function
 

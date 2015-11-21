@@ -37,6 +37,7 @@ void * dowork(void* fd)
 }
 
 // TODO: Declare your threadpool!
+pool_t *threadpool;
 
 int main(int argc,char *argv[])
 {
@@ -94,6 +95,7 @@ int main(int argc,char *argv[])
     listen(listenfd, 100);
 
     // TODO: Initialize your threadpool!
+    threadpool = pool_create(5000,100);
 
     // This while loop "forever", handling incoming connections
     while(1)
@@ -108,14 +110,15 @@ int main(int argc,char *argv[])
             The lines below will need to be modified! Some may need to be moved
             to other locations when you make your server multithreaded.
         *********************************************************************/
-        pthread_t tid;
-        pthread_create(&tid,NULL,dowork,(void *)(&connfd));
+        // pthread_t tid;
+        // pthread_create(&tid,NULL,dowork,(void *)(&connfd));
         // struct request req;
         // // parse_request fills in the req struct object
         // parse_request(connfd, &req);
         // // process_request reads the req struct and processes the command
         // process_request(connfd, &req);
         // close(connfd);
+        while(pool_add_task(threadpool, (void *)dowork, (void*)(&connfd)));
     }
 }
 
