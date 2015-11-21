@@ -14,7 +14,7 @@
  *  @var argument Argument to be passed to the function.
  */
 
-#define MAX_THREADS 10
+#define MAX_THREADS 30
 #define STANDBY_SIZE 10
 
 typedef struct {
@@ -101,7 +101,12 @@ int pool_destroy(pool_t *pool)
     int err = 0;
     int rc;
     void *status;
+    pthread_mutex_lock(&(pool->lock));
     pool->close = 1;
+    pool->queue_used += pool->thread_count+1; 
+    printf("Now we have %d in da queue\n", pool->queue_used);
+    pthread_cond_broadcast(&(pool->not_empty));
+    pthread_mutex_unlock(&(pool->lock));
     for(i = 0; i< pool->thread_count; i++)
     {
         rc=pthread_join(pool->threads[i],&status);
@@ -128,21 +133,23 @@ static void *thread_do_work(void *poo)
     while(1) {
       printf("I am a thread\n");
       pool_t *pool = (pool_t*)poo;
-      if(pool->close == 1)
-      {
-        pthread_exit(NULL);
-      }
 		pthread_mutex_lock(&(pool->lock)); //must lock this because we are working with the worker queue
 		while((pool->queue_used) == 0) //if worker queue is empty, put thread to sleep until new tasks are added to the worker queue
 		{
 			pthread_cond_wait(&(pool->not_empty),&(pool->lock));
 		}
     printf("Yeah, my turn\n");
+    if(pool->close == 1)
+    {
+        pthread_mutex_unlock(&(pool->lock));
+        pthread_exit(NULL);
+    }
 		pool_task_t temp = pool->queue[pool->queue_front]; //I don't know how to do dereference of the void function pointers specifically so I'm going to do this and use a temp
 
 		pool->queue_used--; //total amount of jobs completed is minus one
 		pool->queue_front = (pool->queue_front + 1) % pool->task_queue_size_limit; //upon completing the task we want to increment the queue by one
 		pthread_cond_signal(&(pool->not_full)); ///signal that we are available to add another job
+    //(temp.function)(temp.argument);
 		pthread_mutex_unlock(&(pool->lock));    //release the lock before executing the function
 
 		//execute the actual function simultaneously with any other threads

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <pthread.h>
 #include "seats.h"
 
 seat_t* seat_header = NULL;
@@ -153,6 +153,7 @@ void load_seats(int number_of_seats)
         temp->customer_id = -1;
         temp->state = AVAILABLE;
         temp->next = NULL;
+        pthread_mutex_init((&temp->lock),NULL);
         
         if (seat_header == NULL)
         {

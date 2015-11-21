@@ -25,13 +25,14 @@ int listenfd;
 void * dowork(void* fd)
 {
         int connfd = *((int*)fd);
-        struct request *req = (struct request*)malloc(sizeof(struct request));
+        // struct request *req = (struct request*)malloc(sizeof(struct request));
+        struct request req;
         // parse_request fills in the req struct object
-        parse_request(connfd, req);
+        parse_request(connfd, &req);
         // process_request reads the req struct and processes the command
-        process_request(connfd, req);
+        process_request(connfd, &req);
         close(connfd);
-        free(req);
+        // free(req);
         return NULL;
 
 }
@@ -95,7 +96,7 @@ int main(int argc,char *argv[])
     listen(listenfd, 100);
 
     // TODO: Initialize your threadpool!
-    threadpool = pool_create(5000,100);
+    threadpool = pool_create(50,100);
 
     // This while loop "forever", handling incoming connections
     while(1)
@@ -128,6 +129,7 @@ void shutdown_server(int signo){
     printf("Shutting down the server...\n");
     
     // TODO: Teardown your threadpool
+    pool_destroy(threadpool);
 
     // TODO: Print stats about your ability to handle requests.
     unload_seats();
