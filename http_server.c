@@ -25,12 +25,14 @@ int listenfd;
 void * dowork(void* fd)
 {
         int connfd = *((int*)fd);
-        struct request req;
+        struct request *req = (struct request*)malloc(sizeof(struct request));
         // parse_request fills in the req struct object
-        parse_request(connfd, &req);
+        parse_request(connfd, req);
         // process_request reads the req struct and processes the command
-        process_request(connfd, &req);
+        process_request(connfd, req);
         close(connfd);
+        free(req);
+        return NULL;
 
 }
 
