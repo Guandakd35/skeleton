@@ -22,17 +22,21 @@ void shutdown_server(int);
 
 int listenfd;
 
-void * dowork(void* fd)
+void dowork(int fd)
 {
-        int connfd = *((int*)fd);
-        // struct request *req = (struct request*)malloc(sizeof(struct request));
-        struct request req;
+        //int connfd = *((int*)fd);
+        int connfd = fd ;
+        struct request *req = (struct request*)malloc(sizeof(struct request));
+        //struct request req;
+        pthread_mutex_init(&(req->lock),NULL);
         // parse_request fills in the req struct object
-        parse_request(connfd, &req);
+        pthread_mutex_lock(&(req->lock));
+        parse_request(connfd, req);
         // process_request reads the req struct and processes the command
-        process_request(connfd, &req);
+        process_request(connfd, req);
+        pthread_mutex_unlock(&(req->lock));
         close(connfd);
-        // free(req);
+        free(req);
         return NULL;
 
 }
@@ -96,7 +100,7 @@ int main(int argc,char *argv[])
     listen(listenfd, 100);
 
     // TODO: Initialize your threadpool!
-    threadpool = pool_create(50,100);
+    threadpool = pool_create(5000,100);
 
     // This while loop "forever", handling incoming connections
     while(1)
@@ -119,7 +123,7 @@ int main(int argc,char *argv[])
         // // process_request reads the req struct and processes the command
         // process_request(connfd, &req);
         // close(connfd);
-        while(pool_add_task(threadpool, (void *)dowork, (void*)(&connfd)));
+        while(pool_add_task(threadpool, (void*)dowork, (void*)connfd));
     }
 }
 

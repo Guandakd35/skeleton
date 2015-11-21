@@ -6,6 +6,7 @@ struct request{
     int user_id;
     int customer_priority;
     char* resource;
+    pthread_mutex_t lock;
 };
 
 void parse_request(int, struct request*);
