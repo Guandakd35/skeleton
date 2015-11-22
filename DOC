@@ -33,3 +33,11 @@ We stored the start time stamp everytime we add a task into the threadpool, (thi
 and we also get the timestamp when we exit from the do_work function, (complete the task). We then compute the difference to
 and store it in a global varaible that is constantly being changed. That is we also store
 how many manipulation we made in the server so we can get the average response time. 
+
+About ThreadPool:
+This is basically modelled after the buffer example on the slides
+Upon launching, the server creates a predeterimined number of threads then puts them all to sleep 
+on a condition variable. When a request comes in, it is placed into a worker queue and a broadcast is sent out to all sleeping
+threads to awaken. The first thread that awakens looks at the task and removes it from the list. It ofc first locks to avoid
+racing condition. If all threads are busy, then the task gets added to a worker queue. As soon as a thread finishes it tries to pull
+a task off of the worker queue. If no task exists, then it goes to sleep on condition and waits for a new task to come in and broadcast
