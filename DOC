@@ -2,6 +2,8 @@ Note: due to the specific implimentation of our standby list code, there will be
 Our code correctly manually when testing standby list, or testing the traces without this functionality (traces perform 100% success without standby).
 We would love to show you sometime
 
+We did the extra credit for Cleanup pending requests.
+
 How to Impliment Standby List and Test:
 For each standby list request, we branch a new thread into the standby list (via semwait). [hence 4 traces "fail", but they should work]
 Upon entering the sempaphore.c, the thread will wait on a condition variable until one fo the pending seats is freed.
