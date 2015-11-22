@@ -1,3 +1,8 @@
+Note: due to the specific implimentation of our standby list code, there will be four failures during trace 2. This cannot be prevented.
+Our code correctly manually when testing standby list, or testing the traces without this functionality (traces perform 100% success without standby).
+We would love to show you sometime
+
+How to Impliment Standby List and Test:
 For each standby list request, we branch a new thread into the standby list (via semwait). [hence 4 traces "fail", but they should work]
 Upon entering the sempaphore.c, the thread will wait on a condition variable until one fo the pending seats is freed.
 How to test standby list:
@@ -16,8 +21,13 @@ request to the standby list OR a seat gets taken out of pending state, (in this 
 
 We implimented a queue in the semaphore to keep track of which threads were there first. Contact me if you want help walking through this
 
-We use 10 threads to
 
-
+How to Find Best # of Threads:
 After playing around on our machines with thread count, we found that the best results, (average responsetime )was when we set the
 amount of threads was between 10-20
+
+How to Find Average Response Time:
+We stored the start time stamp everytime we add a task into the threadpool, (this is a global variable that is unique to atask)
+and we also get the timestamp when we exit from the do_work function, (complete the task). We then compute the difference to
+and store it in a global varaible that is constantly being changed. That is we also store
+how many manipulation we made in the server so we can get the average response time. 
