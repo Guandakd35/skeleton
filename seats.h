@@ -1,3 +1,4 @@
+#include <sys/timeb.h>
 #ifndef _SEAT_OPERATIONS_H_
 #define _SEAT_OPERATIONS_H_
 
@@ -10,6 +11,7 @@ typedef enum
 
 typedef struct seat_struct
 {
+    struct timeb timer;
 	pthread_mutex_t lock; //we will add a lock so that there is no racing conditions
     int id;
     int customer_id;
@@ -17,7 +19,7 @@ typedef struct seat_struct
     struct seat_struct* next;
 } seat_t;
 
-
+void *check_pend();
 void load_seats(int);
 void unload_seats();
 // each one of these main functions represents how code handles a function call made to the server

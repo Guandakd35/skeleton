@@ -23,6 +23,7 @@ void shutdown_server(int);
 double duration;
 int listenfd;
 
+
 void dowork(int fd)
 {
         //int connfd = *((int*)fd);
@@ -50,6 +51,7 @@ pool_t *threadpool;
 
 int main(int argc,char *argv[])
 {
+    pthread_t check_p;
     int flag, num_seats = 20;
     int connfd = 0;
     struct sockaddr_in serv_addr;
@@ -106,6 +108,8 @@ int main(int argc,char *argv[])
     // TODO: Initialize your threadpool!
     threadpool = pool_create(5000,100);
     struct timeb start;
+    pthread_create(&check_p,NULL,check_pend,NULL);
+
     // This while loop "forever", handling incoming connections
     while(1)
     {

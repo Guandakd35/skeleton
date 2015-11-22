@@ -6,7 +6,8 @@
 #include <pthread.h>
 #include "seats.h"
 #include "semaphore.h"
-
+#include <unistd.h>
+#include <sys/timeb.h>
 seat_t* seat_header = NULL;
 char seat_state_to_char(seat_state_t);
 
@@ -22,6 +23,34 @@ int FULL(); //this function tells iterates through all seats. If all are O or P 
 //NOTE: You are not actually changing the prexisting buf, only tagging stuff on the end and changing length through snprintf
 //bufsize is the length of the buffer
 ////////////////////////
+
+void *check_pend()
+{
+    while(1)
+    {
+        seat_t* curr = seat_header;
+        struct timeb checker;
+        while(curr != NULL)
+        {
+            if(curr -> state == PENDING)
+            {
+                printf("gonna check time for %d\n",curr->id );
+                pthread_mutex_lock(&(curr->lock));
+                ftime(&checker);
+                printf("~~~~~~~~~~~~~~~~~~~~current time %ld\n",checker.time );
+                if(checker.time - (curr->timer).time >= 15)
+                {
+                    curr -> state = AVAILABLE ;
+                    printf("----------------------release it because %ld\n",checker.time );
+                }
+                pthread_mutex_unlock(&(curr->lock));
+            }
+            curr = curr -> next;
+        }
+        sleep(1);
+    }
+    
+}
 
 void list_seats(char* buf, int bufsize) //If an action in the form of an event call is made the buffer is overwritten here
 {
@@ -59,6 +88,7 @@ void view_seat(char* buf, int bufsize,  int seat_id, int customer_id, int custom
                 snprintf(buf, bufsize, "Confirm seat: %d %c ?\n\n",
 								curr->id, seat_state_to_char(curr->state));
                 curr->state = PENDING;
+                ftime(&(curr->timer));
                 curr->customer_id = customer_id;
 
 				pthread_mutex_unlock(&(curr->lock)); //we're done changin the critical space so we are going to unlcok
@@ -79,22 +109,22 @@ void view_seat(char* buf, int bufsize,  int seat_id, int customer_id, int custom
 				
 				if(ful && (room > 0)) //If plane is full and there is room on standby list, add user request to it
 				{
-					 
-					snprintf(buf, bufsize, "Your ID is being put on standby: %d %c ?\n\n",
-								curr->id, seat_state_to_char(curr->state));
+					snprintf(buf, bufsize, "Seat unavailable\n\n");
+					/*snprintf(buf, bufsize, "Your ID is being put on standby: %d %c ?\n\n",
+								curr->id, seat_state_to_char(curr->state));*/
 					//printf("you are in the function LAYER2 \n");					
 					//snprintf(buf, bufsize, "On WaitingList - seat held by another user\n\n");
 
-					//we are going to branch another thread to go off and be put into standby, meanwhile we will end this current thread
-					int rc;					
+					//we are going to branch another thread to go off and be put into standby, meanwhile we will end this current thread				
 					pthread_t pid1;
 					pthread_mutex_lock(&(sem->mutex1)); //lock this down while we temporarily set it
 					sem->usrID = customer_id;
 					//printf("BEFORE pthread your USR ID %d \n", customer_id);
-					rc = pthread_create(&pid1, NULL, (void*)sem_wait, (void*)sem);
+					pthread_create(&pid1, NULL, (void*)sem_wait, (void*)sem);
 					pthread_mutex_unlock(&(sem->mutex1)); //unlock this now in parent thread
 					//printf("Parent thread of Standby killed \n");					
-					return;
+					//return;
+                    //snprintf(buf, bufsize, "Seat unavailable\n\n");
 
 				}
 
@@ -239,6 +269,7 @@ void confirm_seat1(int usr)
 void cancel(char* buf, int bufsize, int seat_id, int customer_id, int customer_priority)
 {
     seat_t* curr = seat_header;
+
     while(curr != NULL)
     {
         if(curr->id == seat_id)// if the seat ID from the current one being iterated matches the input one
@@ -254,8 +285,8 @@ void cancel(char* buf, int bufsize, int seat_id, int customer_id, int customer_p
 		pthread_mutex_unlock(&(curr->lock));  //UNLOCK
 
 				//OpenSeat = curr; //this will set the open seat to the one that just got openned
-				int random =  sem_post(sem); //must awaken all of the the threads in the standby list if there are any
-				random  = 3+4;
+				sem_post(sem); //must awaken all of the the threads in the standby list if there are any
+				///random  = 3+4;
     }
             else if(curr->customer_id != customer_id )
             {

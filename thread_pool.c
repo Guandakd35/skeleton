@@ -14,7 +14,7 @@
  *  @var argument Argument to be passed to the function.
  */
 
-#define MAX_THREADS 10
+#define MAX_THREADS 20
 #define STANDBY_SIZE 10
 
 typedef struct {
@@ -74,7 +74,7 @@ pool_t *pool_create(int queue_size, int num_threads)
 int pool_add_task(pool_t *pool, void (*function)(void *), void *argument )
 {
   int err = 0;
-  double d;
+  //double d;
   struct timeb start;
   pthread_mutex_lock(&(pool->lock));
   while(pool->queue_used == pool->task_queue_size_limit)
@@ -82,10 +82,6 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument )
     pthread_cond_wait(&(pool->not_full),&(pool->lock));
   }
   ftime(&start);
-  printf("recording time...... %d \n",start.time);
-  //(*du)-=(start.time*1000 + start.millitm);
-  d = (start.time*1000 + start.millitm);
-  printf("recording time......   \n");
   (pool->queue[pool->queue_rear]).function = function;
   (pool->queue[pool->queue_rear]).argument = argument;
   pool->queue_rear = (pool->queue_rear+1) % pool->task_queue_size_limit;
@@ -106,8 +102,8 @@ int pool_destroy(pool_t *pool)
 {
     int count;
     int i = 0;
-    int err = 0;
-    int rc;
+    //int err = 0;
+    //int rc;
     void *status;
     pthread_mutex_lock(&(pool->lock));
     pool->close = 1;
@@ -118,7 +114,7 @@ int pool_destroy(pool_t *pool)
     pthread_mutex_unlock(&(pool->lock));
     for(i = 0; i< pool->thread_count; i++)
     {
-        rc=pthread_join(pool->threads[i],&status);
+        pthread_join(pool->threads[i],&status);
     }
     count = pool->queue_rear;
     free(pool->threads);
@@ -139,15 +135,15 @@ int pool_destroy(pool_t *pool)
 
 static void *thread_do_work(void *poo)
 { 
-	//these threads will constantly be running
+  //these threads will constantly be running
     while(1) {
       printf("I am a thread\n");
       pool_t *pool = (pool_t*)poo;
-		pthread_mutex_lock(&(pool->lock)); //must lock this because we are working with the worker queue
-		while((pool->queue_used) == 0) //if worker queue is empty, put thread to sleep until new tasks are added to the worker queue
-		{
-			pthread_cond_wait(&(pool->not_empty),&(pool->lock));
-		}
+    pthread_mutex_lock(&(pool->lock)); //must lock this because we are working with the worker queue
+    while((pool->queue_used) == 0) //if worker queue is empty, put thread to sleep until new tasks are added to the worker queue
+    {
+      pthread_cond_wait(&(pool->not_empty),&(pool->lock));
+    }
     //printf("Yeah, my turn\n");
     // if(pool->close == 1)
     // {
@@ -159,17 +155,17 @@ static void *thread_do_work(void *poo)
         pthread_mutex_unlock(&(pool->lock));
         pthread_exit(NULL);
     }
-		pool_task_t temp = pool->queue[pool->queue_front]; //I don't know how to do dereference of the void function pointers specifically so I'm going to do this and use a temp
+    pool_task_t temp = pool->queue[pool->queue_front]; //I don't know how to do dereference of the void function pointers specifically so I'm going to do this and use a temp
 
-		pool->queue_used--; //total amount of jobs completed is minus one
-		pool->queue_front = (pool->queue_front + 1) % pool->task_queue_size_limit; //upon completing the task we want to increment the queue by one
-		pthread_cond_signal(&(pool->not_full)); ///signal that we are available to add another job
+    pool->queue_used--; //total amount of jobs completed is minus one
+    pool->queue_front = (pool->queue_front + 1) % pool->task_queue_size_limit; //upon completing the task we want to increment the queue by one
+    pthread_cond_signal(&(pool->not_full)); ///signal that we are available to add another job
     //(temp.function)(temp.argument);
-		pthread_mutex_unlock(&(pool->lock));    //release the lock before executing the function
+    pthread_mutex_unlock(&(pool->lock));    //release the lock before executing the function
 
-		//execute the actual function simultaneously with any other threads
-		(temp.function)(temp.argument);
-	}
+    //execute the actual function simultaneously with any other threads
+    (temp.function)(temp.argument);
+  }
 
     
 
