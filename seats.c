@@ -41,6 +41,7 @@ void *check_pend()
                 if(checker.time - (curr->timer).time >= 15)
                 {
                     curr -> state = AVAILABLE ;
+                    sem_post(sem);
                     printf("----------------------release it because %ld\n",checker.time );
                 }
                 pthread_mutex_unlock(&(curr->lock));
