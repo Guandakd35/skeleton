@@ -25,5 +25,5 @@ void list_seats(char* buf, int bufsize);
 void view_seat(char* buf, int bufsize, int seat_num, int customer_num, int customer_priority);
 void confirm_seat(char* buf, int bufsize, int seat_num, int customer_num, int customer_priority);
 void cancel(char* buf, int bufsize, int seat_num, int customer_num, int customer_priority);
-
+void confirm_seat1(int usr);
 #endif
