@@ -3,34 +3,20 @@
 #include <unistd.h>
 
 #include "semaphore.h"
-#include "threadpool.h"
+
 #define STANDBY_SIZE 10
 
 int sem_wait(m_sem_t *s);
 int sem_post(m_sem_t *s);
 int sem_check(m_sem_t *s);
 
-//we are creating a sem structure
-typedef struct sem_t {
-
-  int value; //classic value
-  pthread_mutex_t mutex;
-  pthread_cond_t cond;
-
-  //the standby list will have a queue to determine what requests came in first [basically same as threadpool.c]
-  int task_queue_size_limit;
-  int queue_front;
-  int queue_rear;
-  
-} m_sem_t;
-
 
 m_sem_t *sem_init(m_sem_t *st, int value)
 {
 
-	m_sem_t *st = (st*)malloc(sizeof(m_sem_t));
-	pthread_mutex_init(&(s->mutex), NULL); //initializing the mutex and condition variables
-	pthread_cond_init(&(s->cond), NULL);
+  	 st = (m_sem_t*)malloc(sizeof(m_sem_t)); //we do this in seat.c
+	pthread_mutex_init(&(st->mutex), NULL); //initializing the mutex and condition variables
+	pthread_cond_init(&(st->cond), NULL);
 
 	st->value = value; //this is going ot be 10
 
