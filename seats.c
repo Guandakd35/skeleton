@@ -63,36 +63,39 @@ void view_seat(char* buf, int bufsize,  int seat_id, int customer_id, int custom
 
 				pthread_mutex_unlock(&(curr->lock)); //we're done changin the critical space so we are going to unlcok
 			}
-
+/////////////////////////////////////////////////////////////////////////
 			else if(curr->state == PENDING && curr->customer_id != customer_id) //if the targeted seat iseither pending we are going to see if plane is full
 			{
-				//int ful = FULL(); //we can do extra messages if we have time
-				//int room = sem_check(sem)
 
-				if(FULL() && sem_check(sem)) //If plane is full and there is room on standby list, add user request to it
+				
+				int ful = FULL(); //we can do extra messages if we have time
+				// printf("you are in the function LAYER1 \n");
+				//printf("Your FULL %d \n", ful);	
+				
+				//int room = sem->task_queue_size_limit;
+				//printf("Your Task Queue Size %d \n", room);
+				int room = sem->value;
+
+				
+				if(ful && (room > 0)) //If plane is full and there is room on standby list, add user request to it
 				{
-					snprintf(buf, bufsize, "On WaitingList - seat held by another user\n\n");
+					 
+					snprintf(buf, bufsize, "Your ID is being put on standby: %d %c ?\n\n",
+								curr->id, seat_state_to_char(curr->state));
+					//printf("you are in the function LAYER2 \n");					
+					//snprintf(buf, bufsize, "On WaitingList - seat held by another user\n\n");
 
-					//snprintf(buf, bufsize, "All Seats Full. Your User ID automatically placed in Standby. please wait... %d %c ?\n\n",
-						//curr->id, seat_state_to_char(curr->state));
-					int random = sem_wait(sem); //now we step our thread into standby mode until a seat becomes avaible
-					random = 1 + 1; //to get rid of the stupid warning
-					//When a seat becomes available we return to this point
+					//we are going to branch another thread to go off and be put into standby, meanwhile we will end this current thread
+					int rc;					
+					pthread_t pid1;
+					pthread_mutex_lock(&(sem->mutex1)); //lock this down while we temporarily set it
+					sem->usrID = customer_id;
+					//printf("BEFORE pthread your USR ID %d \n", customer_id);
+					rc = pthread_create(&pid1, NULL, (void*)sem_wait, (void*)sem);
+					pthread_mutex_unlock(&(sem->mutex1)); //unlock this now in parent thread
+					//printf("Parent thread of Standby killed \n");					
+					return;
 
-					//Must LOCKDOWN all threads in Thread pool while we run this
-					//pthread_mutex_lock(&(pool->lock)); //must lock EVERYTHING up while we reassign
-
-					curr = openseat(); //we are reassinging the current seat to the new open one
-					pthread_mutex_lock(&(curr->lock));  //LOCK
-
-					snprintf(buf, bufsize, "Seat confirmed: %d %c\n\n",
-						curr->id, seat_state_to_char(curr->state));
-					curr->state = OCCUPIED;
-					curr->customer_id = customer_id;
-
-					pthread_mutex_unlock(&(curr->lock)); //UNLOCK
-					//pthread_mutex_unlock(&(pool->lock)); //we are g
-					return; //now we exit
 				}
 
 			}
@@ -121,9 +124,10 @@ int FULL()
             if(curr->state == AVAILABLE)
             {
 				return 0; //this means we found a seat that is available therfore no standby list neeeded and we'll leave function with 0
+				//printf("You have an available seat \n");
             }
-           if(curr->state == AVAILABLE)
-       		 {
+           if(curr->state == PENDING)
+		{
 				counter++; //this means we found a seat that is available therfore no standby list neeeded and we'll leave function with 0
             }
         curr = curr->next;
@@ -178,11 +182,11 @@ void confirm_seat(char* buf, int bufsize, int seat_id, int customer_id, int cust
             }
             else if(curr->customer_id != customer_id ) //if the current customer is trying to reserver a seat that is not reservered fr him
             {
-                //snprintf(buf, bufsize, "Permission denied - seat held by another user\n\n");
+                snprintf(buf, bufsize, "Permission denied - seat held by another user\n\n");
             }
             else if(curr->state != PENDING)
             {
-               // snprintf(buf, bufsize, "No pending request\n\n");
+                snprintf(buf, bufsize, "No pending request\n\n");
             }
 
 	
@@ -196,6 +200,38 @@ void confirm_seat(char* buf, int bufsize, int seat_id, int customer_id, int cust
     return;
 }
 
+//If a seat gets off standby then its going to run this background thread! [then kill it]
+void confirm_seat1(int usr)
+{
+
+    seat_t* curr = seat_header;
+    while(curr != NULL)
+    {
+
+            if(curr->state == AVAILABLE)
+            {
+				pthread_mutex_lock(&(curr->lock));  //LOCK
+              
+               			curr->state = OCCUPIED;
+				curr-> customer_id = usr;
+				int seatNum = curr-> id;
+				
+				pthread_mutex_unlock(&(curr->lock)); //UNLOCK
+
+				printf("USR %d got to take available seat Number %d \n", usr, seatNum);
+            }
+         
+        curr = curr->next;
+     	}
+
+	//upon completing these auxilery threads commit sepoku
+	printf("Commiting sepuko \n");
+	
+	pthread_exit(NULL);
+	
+
+    return;
+}
 
 //This also is called from the Seat Confirmation page to cancel a pending seat reservation. 
 //This can only be called when the same user has placed the seat into the pending (P) state, and returns the seat to the available (A) state.
@@ -209,15 +245,15 @@ void cancel(char* buf, int bufsize, int seat_id, int customer_id, int customer_p
         {
             if(curr->state == PENDING && curr->customer_id == customer_id )
             {
-
+		
 		pthread_mutex_lock(&(curr->lock));  //LOCK
                 snprintf(buf, bufsize, "Seat request cancelled: %d %c\n\n",
                 curr->id, seat_state_to_char(curr->state));
                 curr->state = AVAILABLE;
                 curr->customer_id = -1;
-				pthread_mutex_unlock(&(curr->lock)); //UNLOCK
+		pthread_mutex_unlock(&(curr->lock));  //UNLOCK
 
-				OpenSeat = curr; //this will set the open seat to the one that just got openned
+				//OpenSeat = curr; //this will set the open seat to the one that just got openned
 				int random =  sem_post(sem); //must awaken all of the the threads in the standby list if there are any
 				random  = 3+4;
     }
@@ -234,6 +270,7 @@ void cancel(char* buf, int bufsize, int seat_id, int customer_id, int customer_p
         }
         curr = curr->next;
     }
+
     snprintf(buf, bufsize, "Seat not found\n\n");
     
     return;
