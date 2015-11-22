@@ -8,17 +8,20 @@ typedef struct sem_t {
 
   int value; //classic value
   pthread_mutex_t mutex;
+  pthread_mutex_t mutex1; // this is for the user ID
   pthread_cond_t cond;
 
   //the standby list will have a queue to determine what requests came in first [basically same as threadpool.c]
   int task_queue_size_limit;
   int queue_front;
   int queue_rear;
+  int usrID;
+  int used;
   
 } m_sem_t;
 
 
-int sem_wait(m_sem_t *s);
+void sem_wait(m_sem_t *s);
 int sem_post(m_sem_t *s);
 int sem_check(m_sem_t *s); //this checks if there are already 10 threads in the standby list
 m_sem_t *sem_init(m_sem_t *s, int value); //initializes the global semaphore in the seats.c 
