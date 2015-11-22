@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include "thread_pool.h"
-
+#include <sys/timeb.h>
 /**
  *  @struct threadpool_task
  *  @brief the work struct
@@ -71,14 +71,21 @@ pool_t *pool_create(int queue_size, int num_threads)
  * Add a task to the threadpool
  *
  */
-int pool_add_task(pool_t *pool, void (*function)(void *), void *argument)
+int pool_add_task(pool_t *pool, void (*function)(void *), void *argument )
 {
   int err = 0;
+  double d;
+  struct timeb start;
   pthread_mutex_lock(&(pool->lock));
   while(pool->queue_used == pool->task_queue_size_limit)
   {
     pthread_cond_wait(&(pool->not_full),&(pool->lock));
   }
+  ftime(&start);
+  printf("recording time...... %d \n",start.time);
+  //(*du)-=(start.time*1000 + start.millitm);
+  d = (start.time*1000 + start.millitm);
+  printf("recording time......   \n");
   (pool->queue[pool->queue_rear]).function = function;
   (pool->queue[pool->queue_rear]).argument = argument;
   pool->queue_rear = (pool->queue_rear+1) % pool->task_queue_size_limit;
@@ -97,13 +104,15 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument)
  */
 int pool_destroy(pool_t *pool)
 {
+    int count;
     int i = 0;
     int err = 0;
     int rc;
     void *status;
     pthread_mutex_lock(&(pool->lock));
     pool->close = 1;
-    pool->queue_used += pool->thread_count+1; 
+    // pool->queue_used += pool->thread_count+1; 
+    pool->queue_used += (pool->task_queue_size_limit + 1); 
     printf("Now we have %d in da queue\n", pool->queue_used);
     pthread_cond_broadcast(&(pool->not_empty));
     pthread_mutex_unlock(&(pool->lock));
@@ -111,13 +120,14 @@ int pool_destroy(pool_t *pool)
     {
         rc=pthread_join(pool->threads[i],&status);
     }
+    count = pool->queue_rear;
     free(pool->threads);
     free(pool->queue);
     pthread_mutex_destroy(&pool->lock);
     pthread_cond_destroy(&pool->not_empty);
     pthread_cond_destroy(&pool->not_full);
     free(pool);
-    return err;
+    return count;
 }
 
 
@@ -138,8 +148,13 @@ static void *thread_do_work(void *poo)
 		{
 			pthread_cond_wait(&(pool->not_empty),&(pool->lock));
 		}
-    printf("Yeah, my turn\n");
-    if(pool->close == 1)
+    //printf("Yeah, my turn\n");
+    // if(pool->close == 1)
+    // {
+    //     pthread_mutex_unlock(&(pool->lock));
+    //     pthread_exit(NULL);
+    // }
+    if(pool->queue_used == pool->task_queue_size_limit + 1)
     {
         pthread_mutex_unlock(&(pool->lock));
         pthread_exit(NULL);

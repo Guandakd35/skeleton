@@ -6,8 +6,8 @@
 
 //typedef struct m_sem_t { //moved this into a header file for access from other parts of the program
 
-int sem_wait(m_sem_t *s);
-int sem_post(m_sem_t *s);
+// int sem_wait(m_sem_t *s);
+// int sem_post(m_sem_t *s);
 
 //
 void sem_init(m_sem_t *s, int value)

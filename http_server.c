@@ -14,18 +14,20 @@
 #include "thread_pool.h"
 #include "seats.h"
 #include "util.h"
-
+#include <sys/timeb.h>
 #define BUFSIZE 1024
 #define FILENAMESIZE 100
 
 void shutdown_server(int);
 
+double duration;
 int listenfd;
 
 void dowork(int fd)
 {
         //int connfd = *((int*)fd);
-        int connfd = fd ;
+        struct timeb end;
+        int connfd = fd;
         struct request *req = (struct request*)malloc(sizeof(struct request));
         //struct request req;
         pthread_mutex_init(&(req->lock),NULL);
@@ -34,10 +36,12 @@ void dowork(int fd)
         parse_request(connfd, req);
         // process_request reads the req struct and processes the command
         process_request(connfd, req);
+        ftime(&end);
+        duration += (end.time*1000 +end.millitm) ;
         pthread_mutex_unlock(&(req->lock));
         close(connfd);
         free(req);
-        return NULL;
+        //return NULL;
 
 }
 
@@ -101,7 +105,7 @@ int main(int argc,char *argv[])
 
     // TODO: Initialize your threadpool!
     threadpool = pool_create(5000,100);
-
+    struct timeb start;
     // This while loop "forever", handling incoming connections
     while(1)
     {
@@ -123,6 +127,8 @@ int main(int argc,char *argv[])
         // // process_request reads the req struct and processes the command
         // process_request(connfd, &req);
         // close(connfd);
+        ftime(&start);
+        duration-=(start.time*1000 + start.millitm);
         while(pool_add_task(threadpool, (void*)dowork, (void*)connfd));
     }
 }
@@ -131,10 +137,11 @@ int main(int argc,char *argv[])
 
 void shutdown_server(int signo){
     printf("Shutting down the server...\n");
-    
+    int count;
     // TODO: Teardown your threadpool
-    pool_destroy(threadpool);
-
+    count = pool_destroy(threadpool);
+    duration = duration / count;
+    printf("The average respond time is %f ms \n",duration);
     // TODO: Print stats about your ability to handle requests.
     unload_seats();
     close(listenfd);
