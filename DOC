@@ -1,0 +1,23 @@
+For each standby list request, we branch a new thread into the standby list (via semwait). [hence 4 traces "fail", but they should work]
+Upon entering the sempaphore.c, the thread will wait on a condition variable until one fo the pending seats is freed.
+How to test standby list:
+./http_server 3
+open up 5 tabs. 
+reserve 1 seat with one user ID
+Pend the other two with usr ID 2+3
+With tabs 4 and 5 click on any of the seats that were put into standby, (browser must not be refreshed)
+Then go back to tabs 3 and 2 and hit "cancel"
+Pay attention to the output printing on console screen to verify that right user ID's are getting added to open seats(or through other means)
+Contact me if you need help showing this, glansbury@u.northwestern.edu
+
+
+Seats.c and semaphore.c functions sommunicate with each other everytime all the seats are empty and we need to add a 
+request to the standby list OR a seat gets taken out of pending state, (in this even there will be a broadcast to wake standby up)
+
+We implimented a queue in the semaphore to keep track of which threads were there first. Contact me if you want help walking through this
+
+We use 10 threads to
+
+
+After playing around on our machines with thread count, we found that the best results, (average responsetime )was when we set the
+amount of threads was between 10-20
